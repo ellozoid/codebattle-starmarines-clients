@@ -1,0 +1,32 @@
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>JS StarMarines BOT</title>
+  <script src="CodeBattleJsLibrary.js"></script>
+</head>
+<body id="body">
+  <textarea id="text" readonly=true style="display: block; width: 100%; height: 100%; resize: none;"></textarea>
+  <script type="text/javascript">
+    
+    var gcb = new GameClient("localhost:8080", "<token>", "<login>");
+    gcb.textArea = text;
+    
+    gcb.run(() => {
+      /* ******************************** */
+      
+      gcb.getMyPlanets().forEach(planet => {
+        planet.neighbours.forEach(neibh => {
+          if (neibh !== planet.id) {
+            gcb.sendDrones(planet.id, neibh, Math.floor(planet.droids/planet.neighbours.length))
+          }
+        })
+        
+      });
+      
+      /* ******************************* */
+    });
+
+
+  </script>
+</body>
+</html>
