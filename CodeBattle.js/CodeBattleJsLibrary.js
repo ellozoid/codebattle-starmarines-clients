@@ -12,10 +12,10 @@
         this.socket.onclose = this.onClose;
         this.socket.onmessage = (event) => {
            this.actions = [];
-           this.planets = [];
+           this.planets = []; 
            let data = JSON.parse(event.data); 
            this.planets = data.planets;
-            if (data.errors) {
+            if (data.errors && data.errors.length) {
                 this.onError(data.errors);
             }
             callback();
@@ -24,15 +24,15 @@
     }
 
     onOpen() {
-        text.value += "Connection established\n";
+        text.value += `Connection established\n`;
     }
 
     onClose(event) {
         if (event.wasClean) {
-            text.value += "### disconnected ###\n"
+            text.value += `### disconnected ###\n`;
         } else {
-            text.value += "### accidentally disconnected ###\n";
-            text.value += " - Err code: " + event.code + ", Reason: " + event.reason + "\n";
+            text.value += `### accidentally disconnected ###\n`;
+            text.value += ` - Err code: ${event.code}, Reason: ${event.reason} \n`;
         }
     }
 
@@ -44,7 +44,10 @@
         const msg = {
             "actions": this.actions
         }
-        text.value += "Sending: " + (msg ? JSON.stringify(msg) : 'stop') + '\n'
+        text.value += 'Sending:\n';
+        msg.actions.forEach(msg => {
+            text.value += msg ? JSON.stringify(msg) + '\n' : 'stop';
+        })
         this.socket.send(JSON.stringify(msg))
     }
 
