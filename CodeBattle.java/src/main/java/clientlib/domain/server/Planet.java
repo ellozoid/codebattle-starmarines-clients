@@ -12,7 +12,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PlanetInfo {
+public class Planet {
     private long id;
     private long droids;
     private String owner;

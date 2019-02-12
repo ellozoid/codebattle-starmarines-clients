@@ -3,7 +3,7 @@ package clientlib;
 import clientlib.domain.client.ClientAction;
 import clientlib.domain.client.ClientCommand;
 import clientlib.domain.server.GalaxySnapshot;
-import clientlib.domain.server.PlanetInfo;
+import clientlib.domain.server.Planet;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import lombok.Getter;
@@ -23,12 +23,17 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
 
+/**
+ * Основной объект клиента для взаимодействия с сервером.
+ */
 @Slf4j
 public class CodeBattleJavaClient extends WebSocketClient {
     private static final Gson GSON = new Gson();
     private Consumer<CodeBattleJavaClient> handler;
-    @Getter
     private final String player;
+    /**
+     * @return Cнапшот галактики
+     */
     @Getter
     private GalaxySnapshot galaxy;
     private List<ClientAction> actions = new ArrayList<>();
@@ -38,20 +43,32 @@ public class CodeBattleJavaClient extends WebSocketClient {
         this.player = player;
     }
 
-    public List<PlanetInfo> getMyPlanets() {
+    /**
+     * @return аннексированные тобой планеты или пустая коллекция, если таковых не найдено
+     */
+    public List<Planet> getMyPlanets() {
         return this.galaxy.getPlanets().stream()
                 .filter(planet -> player.equals(planet.getOwner()))
                 .collect(Collectors.toList());
     }
 
-    public PlanetInfo getPlanetById(long planetId) {
+    /**
+     * @param planetId идентификатор планеты
+     * @return планета с идентификатором <tt>planetId</tt> или <tt>null</tt>, если такой планеты не найлено
+     */
+    public Planet getPlanetById(long planetId) {
         return this.galaxy.getPlanets().stream()
                 .filter(planet -> planet.getId() == planetId)
                 .findFirst()
                 .orElse(null);
     }
 
-    public List<PlanetInfo> getNeighbours(long planetId) {
+    /**
+     * Получение соседних планет относительно планеты <tt>planetId</tt>
+     * @param planetId идентификатор планеты для получения её соседей
+     * @return список соседних планет
+     */
+    public List<Planet> getNeighbours(long planetId) {
         return ofNullable(getPlanetById(planetId))
                 .map(planet -> galaxy.getPlanets().stream()
                         .filter(p -> planet.getNeighbours().contains(p.getId()))
@@ -59,6 +76,12 @@ public class CodeBattleJavaClient extends WebSocketClient {
                 .orElse(Collections.emptyList());
     }
 
+    /**
+     * Добавление команды отправки дронов
+     * @param from идентификатор аннексированной планеты, с который ты собираешься выслать дронов
+     * @param to идентификатор планеты, на которую ты высылаешь дронов
+     * @param drones количество пересылаемых дронов
+     */
     public void sendDrones(long from, long to, long drones) {
         this.actions.add(new ClientAction(from, to, drones));
     }
@@ -70,17 +93,17 @@ public class CodeBattleJavaClient extends WebSocketClient {
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        log.warn("### disconnected ###\n{}\n{}", code, reason);
+        log.warn("Disconnected: {} {}", code, reason);
     }
 
     @Override
     public void onError(Exception ex) {
-        log.error("### error ###", ex);
+        log.error("Error:", ex);
     }
 
     @Override
     public void onMessage(String message) {
-        log.info("Received command <<< {}", message);
+        log.debug("Received command <<< {}", message);
         this.actions = new ArrayList<>();
         this.galaxy = ofNullable(message)
                 .map(msg -> GSON.fromJson(msg, GalaxySnapshot.class))
@@ -96,7 +119,7 @@ public class CodeBattleJavaClient extends WebSocketClient {
 
     private void sendMsg() {
         String txtCommand = GSON.toJson(new ClientCommand(actions));
-        log.info("Sending command >>> {}", txtCommand);
+        log.debug("Sending command >>> {}", txtCommand);
         send(txtCommand);
     }
 
