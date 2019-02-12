@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class Edge {
+public class Portal {
     private long source;
     private long target;
 }

@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class DisasterInfo {
+public class Disaster {
     private DisasterType type;
     private Long planetId;
     private Long sourcePlanetId;

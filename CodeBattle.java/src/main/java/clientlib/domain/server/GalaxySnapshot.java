@@ -15,11 +15,11 @@ import java.util.List;
 @Builder
 public class GalaxySnapshot {
     @Builder.Default
-    private List<PlanetInfo> planets = new ArrayList<>();
+    private List<Planet> planets = new ArrayList<>();
     @Builder.Default
-    private List<DisasterInfo> disasters = new ArrayList<>();
+    private List<Disaster> disasters = new ArrayList<>();
     @Builder.Default
-    private List<Edge> portals = new ArrayList<>();
+    private List<Portal> portals = new ArrayList<>();
     @Builder.Default
     private List<String> errors = new ArrayList<>();
 }
