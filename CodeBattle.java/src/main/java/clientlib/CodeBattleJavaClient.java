@@ -23,12 +23,17 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
 
+/**
+ * Основной объект клиента для взаимодействия с сервером.
+ */
 @Slf4j
 public class CodeBattleJavaClient extends WebSocketClient {
     private static final Gson GSON = new Gson();
     private Consumer<CodeBattleJavaClient> handler;
-    @Getter
     private final String player;
+    /**
+     * @return Cнапшот галактики
+     */
     @Getter
     private GalaxySnapshot galaxy;
     private List<ClientAction> actions = new ArrayList<>();
@@ -38,12 +43,19 @@ public class CodeBattleJavaClient extends WebSocketClient {
         this.player = player;
     }
 
+    /**
+     * @return аннексированные тобой планеты или пустая коллекция, если таковых не найдено
+     */
     public List<Planet> getMyPlanets() {
         return this.galaxy.getPlanets().stream()
                 .filter(planet -> player.equals(planet.getOwner()))
                 .collect(Collectors.toList());
     }
 
+    /**
+     * @param planetId идентификатор планеты
+     * @return планета с идентификатором <tt>planetId</tt> или <tt>null</tt>, если такой планеты не найлено
+     */
     public Planet getPlanetById(long planetId) {
         return this.galaxy.getPlanets().stream()
                 .filter(planet -> planet.getId() == planetId)
@@ -51,6 +63,11 @@ public class CodeBattleJavaClient extends WebSocketClient {
                 .orElse(null);
     }
 
+    /**
+     * Получение соседних планет относительно планеты <tt>planetId</tt>
+     * @param planetId идентификатор планеты для получения её соседей
+     * @return список соседних планет
+     */
     public List<Planet> getNeighbours(long planetId) {
         return ofNullable(getPlanetById(planetId))
                 .map(planet -> galaxy.getPlanets().stream()
@@ -59,6 +76,12 @@ public class CodeBattleJavaClient extends WebSocketClient {
                 .orElse(Collections.emptyList());
     }
 
+    /**
+     * Добавление команды отправки дронов
+     * @param from идентификатор аннексированной планеты, с который ты собираешься выслать дронов
+     * @param to идентификатор планеты, на которую ты высылаешь дронов
+     * @param drones количество пересылаемых дронов
+     */
     public void sendDrones(long from, long to, long drones) {
         this.actions.add(new ClientAction(from, to, drones));
     }

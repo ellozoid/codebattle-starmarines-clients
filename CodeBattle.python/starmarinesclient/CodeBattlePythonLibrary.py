@@ -19,8 +19,6 @@ class PlanetType(Enum):
 
 
 class DisasterType(Enum):
-    EARTHQUAKE = 'EARTHQUAKE',
-    VOLCANO = 'VOLCANO',
     METEOR = 'METEOR',
     BLACK_HOLE = 'BLACK_HOLE'
 
@@ -28,15 +26,7 @@ class DisasterType(Enum):
         return self.name
 
 
-class DisasterInfo:
-    def __init__(self, dict):
-        self.type = DisasterType[dict['type']]
-        if self.type in (DisasterType.EARTHQUAKE, DisasterType.VOLCANO, DisasterType.METEOR):
-            self.planetId = dict['planetId']
-        else:
-            self.sourcePlanetId = dict['sourcePlanetId']
-            self.targetPlanetId = dict['targetPlanetId']
-
+class Entity:
     def __str__(self):
         return self.__dict__.__str__()
 
@@ -44,7 +34,17 @@ class DisasterInfo:
         return self.__str__()
 
 
-class PlanetInfo:
+class Disaster(Entity):
+    def __init__(self, dict):
+        self.type = DisasterType[dict['type']]
+        if self.type == DisasterType.METEOR:
+            self.planetId = dict['planetId']
+        else:
+            self.sourcePlanetId = dict['sourcePlanetId']
+            self.targetPlanetId = dict['targetPlanetId']
+
+
+class Planet(Entity):
     def __init__(self, dict):
         self.id = dict['id']
         self.droids = dict['droids']
@@ -52,25 +52,23 @@ class PlanetInfo:
         self.type = PlanetType[dict['type']]
         self.neighbours = dict['neighbours']
 
-    def __str__(self):
-        return self.__dict__.__str__()
 
-    def __repr__(self) -> str:
-        return self.__str__()
+class Portal(Entity):
+    def __init__(self, dict):
+        self.source = dict['source']
+        self.target = dict['target']
 
 
-class GalaxySnapshot:
+class GalaxySnapshot(Entity):
     def __init__(self, dict={}):
         self.errors = dict['errors'] if 'errors' in dict else []
-        self.planets = list(map(lambda p_dict: PlanetInfo(p_dict), dict['planets'])) if 'planets' in dict else []
+        self.planets = list(map(lambda p_dict: Planet(p_dict), dict['planets'])) if 'planets' in dict else []
         self.disasters = list(
-            map(lambda p_dict: DisasterInfo(p_dict), dict['disasters'])) if 'disasters' in dict else []
-
-    def __str__(self):
-        return self.__dict__.__str__()
+            map(lambda d_dict: Disaster(d_dict), dict['disasters'])) if 'disasters' in dict else []
+        self.portals = list(map(lambda p_dict: Portal(p_dict), dict['portals'])) if 'portals' in dict else []
 
 
-class ClientAction:
+class ClientAction(Entity):
     def __init__(self, src, dest, units_count):
         self.src = src
         self.dest = dest
@@ -88,6 +86,9 @@ class ClientCommand:
 
 
 class GameClient:
+    """
+    Основной объект клиента для взаимодействия с сервером.
+    """
     def __init__(self, server, token, player):
         path = "ws://{}/galaxy".format(server)
         self.galaxy = None
@@ -101,20 +102,42 @@ class GameClient:
                                              on_open=self.on_open)
 
     def send_drones(self, src, dest, drones):
+        """
+        Добавление команды отправки дронов
+        :param src: идентификатор аннексированной планеты, с который ты собираешься выслать дронов
+        :param dest: идентификатор планеты, на которую ты высылаешь дронов
+        :param drones: количество пересылаемых дронов
+        """
         self.actions.append(ClientAction(src, dest, drones))
 
     def get_my_planets(self):
+        """
+        :return: Аннексированные тобой планеты или **[]**, если таковых не найдено
+        """
         return list(filter(lambda p: p.owner == self.player, self.galaxy.planets))
 
     def get_planet_by_id(self, planet_id):
+        """
+        :param planet_id: идентификатор планеты
+        :return: планета с идентификатором **planet_id** или **None**, если такой планеты не найлено
+        """
         planet = list(filter(lambda p: p.id == planet_id, self.galaxy.planets))
         return None if len(planet) == 0 else planet
 
     def get_neighbours(self, planet_id):
+        """
+        Получение соседних планет относительно планеты **planet_id**
+
+        :param planet_id: идентификатор планеты для получения её соседей
+        :return: список соседних планет
+        """
         planet = self.get_planet_by_id(planet_id)
         return [] if not planet else list(filter(lambda p: planet_id in p.neighbours, self.galaxy.planets))
 
     def get_galaxy(self):
+        """
+        :return: снапшот галактики
+        """
         return self.galaxy
 
     def run(self, on_turn=None):
@@ -122,6 +145,7 @@ class GameClient:
         self.socket.run_forever()
 
     def on_message(self, message):
+        logger.debug("Received command <<< {}".format(message))
         self.galaxy = GalaxySnapshot(json.loads(message))
         self.actions = []
         self.on_turn(self)
@@ -130,7 +154,7 @@ class GameClient:
         self.__send(json_command)
 
     def __send(self, msg):
-        logger.info('Sending: {}'.format(msg))
+        logger.debug('Sending command >>> {}'.format(msg))
         if self.socket.sock:
             self.socket.send(msg)
 
@@ -138,7 +162,7 @@ class GameClient:
         logger.info('Connection established')
 
     def on_error(self, error):
-        logger.error(error)
+        logger.error("Error: {}".format(error))
 
     def on_close(self):
-        logger.info("### disconnected ###")
+        logger.info("Disconnected")
