@@ -10,10 +10,13 @@ CodeBattle.net/CodeBattleNetLibrary/bin/Debug/
 CodeBattle.net/CodeBattleNetLibrary/bin/Release/
 CodeBattle.net/packages/
 CodeBattle.cpp/.vs/
-CodeBattle.cpp/CodeBattleCpp/Debug/
+CodeBattle.cpp/CodeBattleCpp/x64
+CodeBattle.cpp/CodeBattleCpp/Debug/*
+CodeBattle.cpp/x64/*
 CodeBattle.cpp/CodeBattleCpp/Release/
 CodeBattle.cpp/CodeBattleCppLibrary/Debug/
 CodeBattle.cpp/CodeBattleCppLibrary/Release/
+CodeBattle.cpp/CodeBattleCppLibrary/x64/
 CodeBattle.cpp/Debug/
 CodeBattle.cpp/Release/
 CodeBattle.cpp/CodeBattleCpp.VC.db
