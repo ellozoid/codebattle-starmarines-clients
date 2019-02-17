@@ -19,16 +19,22 @@ namespace StarMarines.Strategies
                         return x.owner.Equals(BotName,StringComparison.InvariantCultureIgnoreCase);
                     }
                     return false;                    
-                }).FirstOrDefault(); // берем первую
-                if (my != null){ // проверяем а остались ли свои планеты?
-                    var nei = my.neighbours.ToList();  // находим соседей
-                    var next_p = nei.Skip(rand.Next(nei.Count-1)).FirstOrDefault(); // выбираем случайного соседа
-                    command.actions = new Models.Action[1] { new Models.Action{ // формируем действие. Можно сформироват ьпо одному действию с каждой вашей планеты.
-                        from = my.id, 
-                        to = next_p, 
-                        unitsCount = rand.Next(1, my.droids)
-                        } 
-                    };
+                }).ToList(); // берем первую
+                if (my.Count() > 0){ // проверяем а остались ли свои планеты?
+                    my.ForEach(p => {
+                        var nei = p.neighbours.ToList();  // находим соседей
+                        var droid = p.droids / nei.Count(); // делим на всех соседей поровну
+                        nei.ForEach(x=>{
+                            command.actions.Add(
+                                new Models.Action{ // формируем действие. Можно сформироват ьпо одному действию с каждой вашей планеты.
+                                    from = p.id,
+                                    to = x,
+                                    unitsCount = droid //rand.Next(1, p.droids)
+                            });
+                        });
+                    });
+                } else {
+                    Console.WriteLine("У вас больше нет планет.");
                 }
             }
             if (message.errors.Count() > 0) // а есть ли ошибки?

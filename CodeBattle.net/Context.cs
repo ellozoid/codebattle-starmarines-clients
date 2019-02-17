@@ -22,17 +22,19 @@ namespace StarMarines {
         private string _uri;
         private string _token;
         private string _botName;
+        private bool _debug;
         public bool isActive { get => _clientWebSocket.State == WebSocketState.Open; }
         public string BotName { get => _botName; }
         public string Token {get => _token; }
 
         //Конструктор контекста
         //Инициализирует объект контекста заданной стратегией
-        public Context(string botName, string server, string token)
+        public Context(string botName, string server, string token, bool debug)
         {
             _uri = $"ws://{server}/galaxy?token={token}";
             _token = token;
             _botName = botName;
+            _debug = debug;
         }
 
         //Метод для установки стратегии
@@ -64,6 +66,7 @@ namespace StarMarines {
 
         public async Task StopConnectionAsync()
         {
+            if (_debug) Console.WriteLine("Connection is closed");
             await _clientWebSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None).ConfigureAwait(false);
         }
 
@@ -71,7 +74,9 @@ namespace StarMarines {
         {
             if (command != null) {
                 command.token = _token;
-                var bytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(command));
+                var _command = JsonConvert.SerializeObject(command);
+                if (_debug) Console.WriteLine("Ваша команда: " + _command);
+                var bytes = Encoding.UTF8.GetBytes(_command);
                 await _clientWebSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
             }
         }
@@ -106,8 +111,8 @@ namespace StarMarines {
 
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    var message = JsonConvert.DeserializeObject<Screen>(serializedMessage);
-                    handleMessage(message);
+                    if (_debug) Console.WriteLine("Входное сообщение: " + serializedMessage);
+                    handleMessage(JsonConvert.DeserializeObject<Screen>(serializedMessage));
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
