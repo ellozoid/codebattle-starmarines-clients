@@ -1,102 +1,41 @@
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
 
 namespace CodeBattleNetLibrary
 {
-	//Контекст, использующий стратегию для решения поставленной задачи
 	public class GameClientStarMarines
 	{
-		private ClientWebSocket _clientWebSocket { get; set; }
+		public GalaxySnapshot Snapshot { get; private set; }
+		private readonly string player;
+		private List<ClientAction> actions = new List<ClientAction>();
 
-		//Ссылка на интерфейс IStrategy
-		//используется при переключении между конкретными реализациями
-		//(проще говоря, это выбор конкретной стратегии)
-		private IStrategy _strategy;
-		private string _uri;
-		private string _token;
-		private string _botName;
-		private bool _debug;
-		public bool isActive { get => _clientWebSocket.State == WebSocketState.Open; }
-		public string BotName { get => _botName; }
-		public string Token { get => _token; }
+		private ClientWebSocket Socket { get; set; }
+		private string path;
 
-		//Конструктор контекста
-		//Инициализирует объект контекста заданной стратегией
-		public GameClientStarMarines(string botName, string server, string token, bool debug)
+		private bool is_running;
+		private Thread work_thread;
+		private Action message_handler;
+
+		public void UpdateFunc()
 		{
-			_uri = $"ws://{server}/galaxy?token={token}";
-			_token = token;
-			_botName = botName;
-			_debug = debug;
-		}
-
-		//Метод для установки стратегии
-		//Используется для смены стратегии во время выполнения программы
-		public void SetStrategy(IStrategy strategy)
-		{
-			_strategy = strategy;
-			_strategy.BotName = _botName;
-		}
-
-		public async Task StartConnectionAsync(Action<GalaxySnapshot> handleMessage)
-		{
-			// also check if connection was lost, that's probably why we get called multiple times.
-			if (_clientWebSocket == null || _clientWebSocket.State != WebSocketState.Open)
+			Socket = new ClientWebSocket();
+			Socket.ConnectAsync(new Uri(path), CancellationToken.None).Wait();
+			while (is_running)
 			{
-				// create a new web-socket so the next connect call works.
-				_clientWebSocket?.Dispose();
-				_clientWebSocket = new ClientWebSocket();
-			}
-			// don't do anything, we are already connected.
-			else return;
-
-			await _clientWebSocket.ConnectAsync(new Uri(_uri), CancellationToken.None).ConfigureAwait(false);
-			await Receive(_clientWebSocket, async (message) =>
-			{
-				handleMessage(message);
-			});
-		}
-
-		public async Task StopConnectionAsync()
-		{
-			if (_debug) Console.WriteLine("Connection is closed");
-			await _clientWebSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None).ConfigureAwait(false);
-		}
-
-		public async Task SendAsync(Command command)
-		{
-			if (command != null)
-			{
-				command.token = _token;
-				var _command = JsonConvert.SerializeObject(command);
-				if (_debug) Console.WriteLine("Ваша команда: " + _command);
-				var bytes = Encoding.UTF8.GetBytes(_command);
-				await _clientWebSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
-			}
-		}
-
-		public async Task Receive(Action<GalaxySnapshot> handleMessage)
-		{
-			await Receive(_clientWebSocket, handleMessage);
-		}
-
-		private async Task Receive(ClientWebSocket clientWebSocket, Action<GalaxySnapshot> handleMessage)
-		{
-			while (_clientWebSocket.State == WebSocketState.Open)
-			{
-				ArraySegment<Byte> buffer = new ArraySegment<byte>(new Byte[1024 * 4]);
-				string serializedMessage = null;
+				ArraySegment<byte> buffer = new ArraySegment<byte>(new byte[1024 * 4]);
+				string message = null;
 				WebSocketReceiveResult result = null;
 				using (var ms = new MemoryStream())
 				{
 					do
 					{
-						result = await clientWebSocket.ReceiveAsync(buffer, CancellationToken.None).ConfigureAwait(false);
+						result = Socket.ReceiveAsync(buffer, CancellationToken.None).Result;
 						ms.Write(buffer.Array, buffer.Offset, result.Count);
 					}
 					while (!result.EndOfMessage);
@@ -105,21 +44,98 @@ namespace CodeBattleNetLibrary
 
 					using (var reader = new StreamReader(ms, Encoding.UTF8))
 					{
-						serializedMessage = await reader.ReadToEndAsync().ConfigureAwait(false);
+						message = reader.ReadToEndAsync().Result;
 					}
 				}
-
-				if (result.MessageType == WebSocketMessageType.Text)
-				{
-					if (_debug) Console.WriteLine("Входное сообщение: " + serializedMessage);
-					handleMessage(JsonConvert.DeserializeObject<GalaxySnapshot>(serializedMessage));
-				}
-				else if (result.MessageType == WebSocketMessageType.Close)
-				{
-					await StopConnectionAsync();
-					break;
-				}
+				Snapshot = JsonConvert.DeserializeObject<GalaxySnapshot>(message);
+				if (Snapshot != null)
+					message_handler();
 			}
 		}
-	}
+
+		public GameClientStarMarines(string _server, string player, string token = "")
+		{
+			Snapshot = null;
+			this.player = player;
+			path = "ws://" + _server + "/galaxy" + "?token=" + token;
+			is_running = false;
+		}
+
+		public void Run(Action _message_handler)
+		{
+			message_handler = _message_handler;
+			is_running = true;
+			work_thread = new Thread(this.UpdateFunc);
+			work_thread.Start();
+		}
+
+		public void SendDrones(int from, int to, int drones)
+		{
+			ClientAction action = new ClientAction { Src = from, Dest = to, UnitCounts = drones };
+			actions.Add(action);
+		}
+
+		public List<string> GetErrors()
+		{
+			return Snapshot.Errors.ToList();
+		}
+
+		public PlanetInfo GetPlanetById(int id)
+		{
+			foreach (var planet in Snapshot.Planets)
+			{
+				if (planet.Id == id)
+				{
+					return planet;
+				}
+			}
+			return null;
+		}
+
+		public List<PlanetInfo> GetNeighbours(int planetId)
+		{
+			List<PlanetInfo> neighbours = new List<PlanetInfo>();
+			foreach (var planet in Snapshot.Planets)
+			{
+				if (planet.Neighbours.Any(p => p == planetId))
+				{
+					neighbours.Add(planet);
+				}
+			}
+			return neighbours;
+		}
+
+		public List<PlanetInfo> GetMyPlanets()
+		{
+			List<PlanetInfo> myPlanets = new List<PlanetInfo>();
+			foreach (var planet in Snapshot.Planets)
+			{
+				if (player == planet.Owner)
+				{
+					myPlanets.Add(planet);
+				}
+			}
+			return myPlanets;
+		}
+
+		public void Blank()
+		{
+			Send("");
+		}
+
+		public void SendMessage()
+		{
+			string commands =
+				"{ \"actions\":[" +
+				string.Join(",", actions.Select(a => "{\"from\":" + a.Src + ", \"to\":" + a.Dest + ", \"unitsCount\":" + a.UnitCounts + "}")) +
+				"]}";
+			Send(commands);
+		}
+
+		private void Send(string msg)
+		{
+			Console.WriteLine("Sending: " + msg);
+			Socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg)), WebSocketMessageType.Text, true, CancellationToken.None).Wait();
+		}
+	};
 }
