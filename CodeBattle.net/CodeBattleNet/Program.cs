@@ -8,7 +8,7 @@ namespace CodeBattleNet
 	{
 		public static void Main(string[] args)
 		{
-			GameClientStarMarines gcb = new GameClientStarMarines(ConfigurationManager.AppSettings["server"], ConfigurationManager.AppSettings["botname"], ConfigurationManager.AppSettings["token"]);
+			var gcb = new GameClientStarMarines(ConfigurationManager.AppSettings["server"], ConfigurationManager.AppSettings["botname"], ConfigurationManager.AppSettings["token"]);
 			gcb.Run(() =>
 			{
 				if (gcb.GetErrors().Count != 0)

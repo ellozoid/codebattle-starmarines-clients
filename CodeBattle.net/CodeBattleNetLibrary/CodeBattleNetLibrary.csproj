@@ -44,13 +44,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AbstractStrategy.cs" />
     <Compile Include="ClientAction.cs" />
-    <Compile Include="BasicStrategy.cs" />
     <Compile Include="Command.cs" />
     <Compile Include="GameClientStarMarines.cs" />
     <Compile Include="DisasterInfo.cs" />
-    <Compile Include="IStrategy.cs" />
     <Compile Include="PlanetInfo.cs" />
     <Compile Include="Portal.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

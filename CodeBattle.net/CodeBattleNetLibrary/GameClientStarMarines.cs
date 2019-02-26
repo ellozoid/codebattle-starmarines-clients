@@ -12,33 +12,31 @@ namespace CodeBattleNetLibrary
 	public class GameClientStarMarines
 	{
 		public GalaxySnapshot Snapshot { get; private set; }
-		private readonly string player;
-		private List<ClientAction> actions = new List<ClientAction>();
+		private readonly string _player;
+		private readonly List<ClientAction> _actions = new List<ClientAction>();
 
 		private ClientWebSocket Socket { get; set; }
-		private string path;
+		private readonly string _path;
 
-		private bool is_running;
-		private Thread work_thread;
-		private Action message_handler;
+		private Thread _workThread;
+		private Action _messageHandler;
 
-		public void UpdateFunc()
+		private void UpdateFunc()
 		{
 			Socket = new ClientWebSocket();
-			Socket.ConnectAsync(new Uri(path), CancellationToken.None).Wait();
-			while (is_running)
+			Socket.ConnectAsync(new Uri(_path), CancellationToken.None).Wait();
+			while (Socket.State == WebSocketState.Open)
 			{
-				ArraySegment<byte> buffer = new ArraySegment<byte>(new byte[1024 * 4]);
-				string message = null;
-				WebSocketReceiveResult result = null;
+				var buffer = new ArraySegment<byte>(new byte[1024 * 4]);
+				string message;
 				using (var ms = new MemoryStream())
 				{
+					WebSocketReceiveResult result = null;
 					do
 					{
 						result = Socket.ReceiveAsync(buffer, CancellationToken.None).Result;
 						ms.Write(buffer.Array, buffer.Offset, result.Count);
-					}
-					while (!result.EndOfMessage);
+					} while (!result.EndOfMessage);
 
 					ms.Seek(0, SeekOrigin.Begin);
 
@@ -47,32 +45,30 @@ namespace CodeBattleNetLibrary
 						message = reader.ReadToEndAsync().Result;
 					}
 				}
+
 				Snapshot = JsonConvert.DeserializeObject<GalaxySnapshot>(message);
 				if (Snapshot != null)
-					message_handler();
+					_messageHandler();
 			}
 		}
 
-		public GameClientStarMarines(string _server, string player, string token = "")
+		public GameClientStarMarines(string server, string player, string token = "")
 		{
 			Snapshot = null;
-			this.player = player;
-			path = "ws://" + _server + "/galaxy" + "?token=" + token;
-			is_running = false;
+			this._player = player;
+			_path = "ws://" + server + "/galaxy" + "?token=" + token;
 		}
 
-		public void Run(Action _message_handler)
+		public void Run(Action messageHandler)
 		{
-			message_handler = _message_handler;
-			is_running = true;
-			work_thread = new Thread(this.UpdateFunc);
-			work_thread.Start();
+			_messageHandler = messageHandler;
+			_workThread = new Thread(this.UpdateFunc);
+			_workThread.Start();
 		}
 
 		public void SendDrones(int from, int to, int drones)
 		{
-			ClientAction action = new ClientAction { Src = from, Dest = to, UnitCounts = drones };
-			actions.Add(action);
+			_actions.Add(new ClientAction { Src = from, Dest = to, UnitCounts = drones });
 		}
 
 		public List<string> GetErrors()
@@ -89,33 +85,18 @@ namespace CodeBattleNetLibrary
 					return planet;
 				}
 			}
+
 			return null;
 		}
 
 		public List<PlanetInfo> GetNeighbours(int planetId)
 		{
-			List<PlanetInfo> neighbours = new List<PlanetInfo>();
-			foreach (var planet in Snapshot.Planets)
-			{
-				if (planet.Neighbours.Any(p => p == planetId))
-				{
-					neighbours.Add(planet);
-				}
-			}
-			return neighbours;
+			return Snapshot.Planets.Where(planet => planet.Neighbours.Any(p => p == planetId)).ToList();
 		}
 
-		public List<PlanetInfo> GetMyPlanets()
+		public IEnumerable<PlanetInfo> GetMyPlanets()
 		{
-			List<PlanetInfo> myPlanets = new List<PlanetInfo>();
-			foreach (var planet in Snapshot.Planets)
-			{
-				if (player == planet.Owner)
-				{
-					myPlanets.Add(planet);
-				}
-			}
-			return myPlanets;
+			return Snapshot.Planets.Where(planet => _player == planet.Owner).ToList();
 		}
 
 		public void Blank()
@@ -125,17 +106,15 @@ namespace CodeBattleNetLibrary
 
 		public void SendMessage()
 		{
-			string commands =
-				"{ \"actions\":[" +
-				string.Join(",", actions.Select(a => "{\"from\":" + a.Src + ", \"to\":" + a.Dest + ", \"unitsCount\":" + a.UnitCounts + "}")) +
-				"]}";
-			Send(commands);
+			Send(JsonConvert.SerializeObject(new Command {Actions = _actions}));
+			_actions.Clear();
 		}
 
 		private void Send(string msg)
 		{
 			Console.WriteLine("Sending: " + msg);
-			Socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg)), WebSocketMessageType.Text, true, CancellationToken.None).Wait();
+			Socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg)), WebSocketMessageType.Text, true,
+				CancellationToken.None).Wait();
 		}
-	};
+	}
 }

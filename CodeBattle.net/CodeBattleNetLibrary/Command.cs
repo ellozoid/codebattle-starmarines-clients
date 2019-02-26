@@ -1,10 +1,10 @@
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace CodeBattleNetLibrary
 {
 	public class Command
 	{
-		public string token;
-		public IList<ClientAction> actions = new List<ClientAction>();
+		[JsonProperty("actions")] public IList<ClientAction> Actions { get; set; }
 	}
 }

@@ -1,10 +1,12 @@
+using Newtonsoft.Json;
+
 namespace CodeBattleNetLibrary
 {
 	public class GalaxySnapshot
 	{
-		public DisasterInfo[] Disasters { get; set; }
-		public PlanetInfo[] Planets { get; set; }
-		public Portal[] Portals { get; set; }
-		public string[] Errors { get; set; }
+		[JsonProperty("disasters")] public DisasterInfo[] Disasters { get; set; }
+		[JsonProperty("planets")] public PlanetInfo[] Planets { get; set; }
+		[JsonProperty("portals")] public Portal[] Portals { get; set; }
+		[JsonProperty("errors")] public string[] Errors { get; set; }
 	}
 }

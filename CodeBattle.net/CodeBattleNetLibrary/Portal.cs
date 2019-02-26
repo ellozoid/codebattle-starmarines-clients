@@ -1,8 +1,10 @@
+using Newtonsoft.Json;
+
 namespace CodeBattleNetLibrary
 {
 	public class Portal
 	{
-		public int Source { get; set; }
-		public int Target { get; set; }
+		[JsonProperty("source")] public int Source { get; set; }
+		[JsonProperty("target")] public int Target { get; set; }
 	}
 }
