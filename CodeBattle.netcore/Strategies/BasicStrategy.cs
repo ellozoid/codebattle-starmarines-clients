@@ -11,35 +11,39 @@ namespace StarMarines.Strategies
     {
         public override Command OnReceived(Screen message)
         {
-            var rand = new Random();
-            Command command = new Command(); // формируем команду
-            if (message.planets.Count() > 0) {  // проверяем наличие планет в ответе
-                var my = message.planets.Where(x=> { // выираем только свои планеты
-                    if(x.owner != null){
-                        return x.owner.Equals(BotName,StringComparison.InvariantCultureIgnoreCase);
-                    }
-                    return false;                    
-                }).ToList(); // берем первую
-                if (my.Count() > 0){ // проверяем а остались ли свои планеты?
-                    my.ForEach(p => {
-                        var nei = p.neighbours.ToList();  // находим соседей
-                        var droid = p.droids / nei.Count(); // делим на всех соседей поровну
-                        nei.ForEach(x=>{
-                            command.actions.Add(
-                                new Models.Action{ // формируем действие. Можно сформироват ьпо одному действию с каждой вашей планеты.
-                                    from = p.id,
-                                    to = x,
-                                    unitsCount = droid //rand.Next(1, p.droids)
-                            });
+            var command = new Command();
+            if (message.Planets.Any())
+            {  
+                var myPlanets = message.Planets.Where(x => 
+                    x.Owner != null && x.Owner.Equals(BotName, StringComparison.InvariantCultureIgnoreCase)).ToList();
+
+                if (myPlanets.Any())
+                {
+                    myPlanets.ForEach(p => 
+                    {
+                        var neighbours = p.Neighbours.ToList();
+                        var droid = p.Droids / neighbours.Count;
+                        neighbours.ForEach(x => 
+                        {
+                            command.Actions.Add(
+                                new Models.Action
+                                { 
+                                    From = p.Id,
+                                    To = x,
+                                    UnitsCount = droid
+                                }
+                            );
                         });
                     });
-                } else {
+                }
+                else
+                {
                     Console.WriteLine("У вас больше нет планет.");
                 }
             }
-            if (message.errors.Count() > 0) // а есть ли ошибки?
+            if (message.Errors.Any())
             {
-                Console.WriteLine(JsonConvert.SerializeObject(message.errors)); // увы есть.. покажем их.
+                Console.WriteLine(JsonConvert.SerializeObject(message.Errors));
             }
             return command;
         }

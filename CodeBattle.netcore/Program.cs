@@ -19,8 +19,8 @@ public class Program
                 .AddJsonFile("appsettings.bot.json", optional: true, reloadOnChange: true); //добавте данную конфигурацию для своего бота, скопировав appsettings.json и настроив его
         var config = configBuilder.Build();
 
-        /// указываем название бота, игровой сервер и секретный токен с сайта
-        _context = new Context(config["botname"], config["server"], config["token"], Boolean.Parse(config["debug"]));
+        // указываем название бота, игровой сервер и секретный токен с сайта
+        _context = new Context(config["botname"], config["server"], config["token"], bool.Parse(config["debug"]));
         _strategy = new BasicStrategy();  //создается стратегия игры для вашего бота . Вы можете создать свою стратегию на базе базовой 
         _context.SetStrategy(_strategy);
         StartConnectionAsync().Wait();
@@ -29,7 +29,8 @@ public class Program
 
     public static async Task StartConnectionAsync()
     {
-        await _context.StartConnectionAsync(async (message) => {
+        await _context.StartConnectionAsync(async (message) => 
+        {
             var command = _strategy.OnReceived(message); // передаем сообщение с сервера в стратегию
             await _context.SendAsync(command); // посылаем сформированный ответ на сервер
         });

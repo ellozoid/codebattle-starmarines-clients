@@ -12,9 +12,7 @@ namespace StarMarines.Strategies
     /// </summary>
     public abstract class AbstratctStrategy : IStrategy
     {
-        private string _botName;
-
-        public string BotName { get => _botName ; set => _botName = value; }
+        public string BotName { get; set; }
 
         public virtual Command OnReceived(Screen message)
         {

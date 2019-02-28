@@ -1,8 +1,13 @@
+using Newtonsoft.Json;
+
 namespace StarMarines.Models
 {
     public class Portal
     {
-        public int source;
-        public int target;
+        [JsonProperty("source")]
+        public int Source { get; set; }
+
+        [JsonProperty("target")]
+        public int Target { get; set; }
     }
 }

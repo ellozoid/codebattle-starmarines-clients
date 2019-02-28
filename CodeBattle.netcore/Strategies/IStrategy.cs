@@ -7,7 +7,8 @@ namespace StarMarines.Strategies
     //Класс Context использует данный интерфейс для вызова конкретной стратегии
     public interface IStrategy
     {
-        string BotName {get; set;}
+        string BotName { get; set;}
+
         Command OnReceived(Screen message);
 
         void Statistics();

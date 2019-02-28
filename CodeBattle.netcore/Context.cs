@@ -72,12 +72,16 @@ namespace StarMarines {
 
         public async Task SendAsync(Command command)
         {
-            if (command != null) {
-                command.token = _token;
-                var _command = JsonConvert.SerializeObject(command);
-                if (_debug) Console.WriteLine("Ваша команда: " + _command);
-                var bytes = Encoding.UTF8.GetBytes(_command);
-                await _clientWebSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            if (command != null)
+            {
+                command.Token = _token;
+                var commandString = JsonConvert.SerializeObject(command);
+                if (_debug)
+                {
+                    Console.WriteLine("Ваша команда: " + commandString);
+                }
+                var commandBytes = Encoding.UTF8.GetBytes(commandString);
+                await _clientWebSocket.SendAsync(new ArraySegment<byte>(commandBytes), WebSocketMessageType.Text, true, CancellationToken.None);
             }
         }
 
